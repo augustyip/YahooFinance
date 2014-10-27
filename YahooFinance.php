@@ -6,6 +6,7 @@ class YahooFinance {
   // YQL Query Parameters. Ref: https://developer.yahoo.com/yql/guide/yql_url.html
   private $options = array(
     'env' => 'http://datatables.org/alltables.env',
+    'diagnostics' => FALSE,
   );
 
   public function __construct($options = array()) {
@@ -14,16 +15,29 @@ class YahooFinance {
 
   public function quote($symbols) {
     if (is_string($symbols)) {
-      $symbols = array($symbols);
+      $yql = 'SELECT * FROM yahoo.finance.quote WHERE symbol = "' . $symbols . '"';
     }
+    else {
+      $yql = 'SELECT * FROM yahoo.finance.quote WHERE symbol IN ("' . implode('", "', $symbols) . '")';
+    }
+    $this->options['q'] = $yql;
+    return $this->query();
+  }
 
-    $this->options['q'] = 'SELECT * FROM yahoo.finance.quote WHERE symbol IN ("' . implode('", "', $symbols) . '")';
+  public function quotes($symbols) {
+    if (is_string($symbols)) {
+      $yql = 'SELECT * FROM yahoo.finance.quotes WHERE symbol = "' . $symbols . '"';
+    }
+    else {
+      $yql = 'SELECT * FROM yahoo.finance.quotes WHERE symbol IN ("' . implode('", "', $symbols) . '")';
+    }
+    $this->options['q'] = $yql;
     return $this->query();
   }
 
   private function query() {
     if (empty($this->options['q']))
-      return;
+      return NULL;
 
     $url = $this->yql_url . '?' . $this->http_build_query($this->options);
     $curl = curl_init($url);  

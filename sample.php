@@ -12,8 +12,11 @@ $options = array(
 );
 
 $yf = new YahooFinance($options);
-$quote = $yf->quote($stocks);
+$quote = $yf->quote('$stocks');
 print_r(json_decode($quote));
+
+$quotes = $yf->quotes($stocks);
+print_r(json_decode($quotes));
 
 echo '</pre>';
 ?>
