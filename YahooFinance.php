@@ -3,41 +3,83 @@
 class YahooFinance {
   private $yql_url  = "http://query.yahooapis.com/v1/public/yql";
 
-  // YQL Query Parameters. Ref: https://developer.yahoo.com/yql/guide/yql_url.html
+  /**
+   * YQL Query Parameters.
+   * Ref: https://developer.yahoo.com/yql/guide/yql_url.html
+   * @var array
+   */
   private $options = array(
-    'env' => 'http://datatables.org/alltables.env',
+    'env'         => 'store://datatables.org/alltableswithkeys',
     'diagnostics' => FALSE,
   );
+
+  private $table;
+  private $conditions = array();
 
   public function __construct($options = array()) {
     $this->options = array_merge($this->options, $options);
   }
 
   public function quote($symbols) {
-    if (is_string($symbols)) {
-      $yql = 'SELECT * FROM yahoo.finance.quote WHERE symbol = "' . $symbols . '"';
-    }
-    else {
-      $yql = 'SELECT * FROM yahoo.finance.quote WHERE symbol IN ("' . implode('", "', $symbols) . '")';
-    }
-    $this->options['q'] = $yql;
+    $this->table = 'quote';
+    $this->conditions = array(
+      array(
+        'field' => 'symbol',
+        'value' => $symbols,
+      ),
+    );
     return $this->query();
   }
 
   public function quotes($symbols) {
-    if (is_string($symbols)) {
-      $yql = 'SELECT * FROM yahoo.finance.quotes WHERE symbol = "' . $symbols . '"';
-    }
-    else {
-      $yql = 'SELECT * FROM yahoo.finance.quotes WHERE symbol IN ("' . implode('", "', $symbols) . '")';
-    }
-    $this->options['q'] = $yql;
+    $this->table = 'quotes';
+    $this->conditions = array(
+      array(
+        'field' => 'symbol',
+        'value' => $symbols,
+      ),
+    );
     return $this->query();
   }
 
+  private function prepare_yql() {
+    if (empty($this->table)) {
+      return FALSE;
+    }
+    else {
+      $yql = 'SELECT * FROM yahoo.finance.' . $this->table;
+    }
+
+    if (!empty($this->conditions)) {
+      foreach ($this->conditions as $key => $condition) {
+        if ($key == 0){
+          $yql .= ' WHERE ';
+        }
+        else {
+          $yql .= ' AND ';
+        }
+
+        if (is_array($condition['value'])) {
+          $yql .= $condition['field'] . ' IN ("' . implode('", "', $condition['value']) . '")';
+        }
+        else {
+          $yql .= $condition['field'] . ' = "' . $condition['value'] . '"';
+        }
+      }
+    }
+
+    return $yql;
+  }
+
   private function query() {
-    if (empty($this->options['q']))
-      return NULL;
+    $yql = $this->prepare_yql();
+
+    if ($yql) {
+      $this->options['q'] = $yql;
+    }
+    else {
+      return FALSE;
+    }
 
     $url = $this->yql_url . '?' . $this->http_build_query($this->options);
     $curl = curl_init($url);  
