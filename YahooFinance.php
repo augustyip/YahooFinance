@@ -1,57 +1,20 @@
 <?php
 
 class YahooFinance {
-  private $yql_url  = "http://query.yahooapis.com/v1/public/yql";
+  static $endpoint  = "http://query.yahooapis.com/v1/public/yql";
 
-  /**
-   * YQL Query Parameters.
-   * Ref: https://developer.yahoo.com/yql/guide/yql_url.html
-   * @var array
-   */
-  private $options = array(
+  // YQL Query Parameters, ref: https://developer.yahoo.com/yql/guide/yql_url.html
+  static $parameters = array(
     'env'         => 'store://datatables.org/alltableswithkeys',
     'diagnostics' => FALSE,
+    'format'      => 'json',
   );
 
-  private $table;
-  private $conditions = array();
+  static function build_yql($table, $conditions = array()) {
+    $yql = 'SELECT * FROM yahoo.finance.' . $table;
 
-  public function __construct($options = array()) {
-    $this->options = array_merge($this->options, $options);
-  }
-
-  public function quote($symbols) {
-    $this->table = 'quote';
-    $this->conditions = array(
-      array(
-        'field' => 'symbol',
-        'value' => $symbols,
-      ),
-    );
-    return $this->query();
-  }
-
-  public function quotes($symbols) {
-    $this->table = 'quotes';
-    $this->conditions = array(
-      array(
-        'field' => 'symbol',
-        'value' => $symbols,
-      ),
-    );
-    return $this->query();
-  }
-
-  private function prepare_yql() {
-    if (empty($this->table)) {
-      return FALSE;
-    }
-    else {
-      $yql = 'SELECT * FROM yahoo.finance.' . $this->table;
-    }
-
-    if (!empty($this->conditions)) {
-      foreach ($this->conditions as $key => $condition) {
+    if (!empty($conditions)) {
+      foreach ($conditions as $key => $condition) {
         if ($key == 0){
           $yql .= ' WHERE ';
         }
@@ -71,42 +34,26 @@ class YahooFinance {
     return $yql;
   }
 
-  private function query() {
-    $yql = $this->prepare_yql();
+  static function query($data) {
 
-    if ($yql) {
-      $this->options['q'] = $yql;
+    if (!empty($data['parameters']['q'])) {
+      return self::execute($data['parameters']);
     }
-    else {
+
+    if (empty($data['table']))
       return FALSE;
-    }
 
-    $url = $this->yql_url . '?' . $this->http_build_query($this->options);
+    $yql = self::build_yql($data['table'], $data['conditions']);
+
+    $data['parameters']['q'] = $yql;
+    return self::execute($data['parameters']);
+  }
+
+  static function execute($parameters) {
+    $parameters = array_merge(self::$parameters, $parameters);
+    $url = self::$endpoint . '?' . http_build_query($parameters);
     $curl = curl_init($url);  
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
     return curl_exec($curl);
-  }
-
-  private function http_build_query(array $query, $parent = '') {
-    $params = array();
-
-    foreach ($query as $key => $value) {
-      $key = ($parent ? $parent . '[' . rawurlencode($key) . ']' : rawurlencode($key));
-
-      // Recurse into children.
-      if (is_array($value)) {
-        $params[] = $this->http_build_query($value, $key);
-      }
-      // If a query parameter value is NULL, only append its key.
-      elseif (!isset($value)) {
-        $params[] = $key;
-      }
-      else {
-        // For better readability of paths in query strings, we decode slashes.
-        $params[] = $key . '=' . str_replace('%2F', '/', rawurlencode($value));
-      }
-    }
-
-    return implode('&', $params);
   }
 }

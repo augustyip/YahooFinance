@@ -4,19 +4,25 @@ require_once('YahooFinance.php');
 
 echo '<pre>';
 
-$stocks = array("0700.HK","0386.HK");
+$symbols = array("0700.HK","0386.HK");
 
-// YQL Query Parameters. Ref: https://developer.yahoo.com/yql/guide/yql_url.html
-$options = array(
-  'format' => 'json',
+$data = array(
+  'table' => 'quote',
+  'conditions' => array(
+    array(
+      'field' => 'symbol',
+      'value' => $symbols,
+    ),
+  ),
 );
 
-$yf = new YahooFinance($options);
-$quote = $yf->quote($stocks);
-print_r(json_decode($quote));
+$result = YahooFinance::query($data);
 
-$quotes = $yf->quotes($stocks);
-print_r(json_decode($quotes));
+print_r(json_decode($result));
+
+$result = YahooFinance::query(array('parameters' => array('q' => 'show tables')));
+
+print_r(json_decode($result));
 
 echo '</pre>';
 ?>
